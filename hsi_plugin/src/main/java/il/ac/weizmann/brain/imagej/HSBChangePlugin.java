@@ -17,6 +17,7 @@ import org.scijava.command.Command;
 import org.scijava.command.Previewable;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
+import org.scijava.widget.NumberWidget;
 
 /**
  * A command that generates a diagonal gradient image of user-given size.
@@ -25,7 +26,7 @@ import org.scijava.plugin.Plugin;
  * </p>
  */
 @Plugin(type = Command.class, headless = true,
-        menuPath = "Process>HSB Adjust",  initializer = "initPlugin")
+        menuPath = "Process>HSB Adjust", initializer = "initPlugin")
 public class HSBChangePlugin implements Command, Previewable {
 
 //    @Parameter
@@ -33,11 +34,14 @@ public class HSBChangePlugin implements Command, Previewable {
     @Parameter
     private ImagePlus image;
 
-    @Parameter(min = "0", max = "255", description = "Hue adjust", label = "Hue+", persist = false)
+    @Parameter(min = "0", max = "255", description = "Hue adjust", label = "Hue, degrees",
+            persist = false, style = NumberWidget.SLIDER_STYLE, stepSize = "10")
     private int hAdjust = 0;
-    @Parameter(min = "0", max = "255", description = "Saturation adjust", label = "Saturation+", persist = false)
+    @Parameter(min = "-255", max = "255", description = "Saturation adjust", label = "Saturation", persist = false,
+            style = NumberWidget.SLIDER_STYLE)
     private int sAdjust = 0;
-    @Parameter(min = "0", max = "255", description = "Brithness adjust", label = "Brithness+", persist = false)
+    @Parameter(min = "-255", max = "255", description = "Brithness adjust", label = "Brithness", persist = false,
+            style = NumberWidget.SLIDER_STYLE)
     private int bAdjust = 0;
 
     private byte[] originalH;
@@ -46,8 +50,8 @@ public class HSBChangePlugin implements Command, Previewable {
 
     private ColorProcessor cp;
     private int imgSize;
-    
-    protected void initPlugin(){
+
+    protected void initPlugin() {
         cp = getColorModel();
         int width = image.getWidth();
         int height = image.getHeight();
@@ -56,6 +60,9 @@ public class HSBChangePlugin implements Command, Previewable {
         originalS = new byte[imgSize];
         originalB = new byte[imgSize];
         cp.getHSB(originalH, originalS, originalB);
+        bAdjust = 0;
+        hAdjust = 0;
+        sAdjust = 0;
     }
 
     @Override
@@ -66,23 +73,31 @@ public class HSBChangePlugin implements Command, Previewable {
         byte[] b = new byte[imgSize];
 
         for (int i = 0; i < imgSize; i++) {
-            int hAjusted=originalH[i] + hAdjust;
-            if(hAjusted > 255){
+            int hAjusted = (originalH[i] & 0xFF) + (int) hAdjust;
+            if (hAjusted > 255) {
                 // in case angle > 360 degree forward it more
-                hAjusted = hAjusted % 255; 
+                hAjusted = hAjusted % 255;
             }
-            
+
             h[i] = (byte) hAjusted;
-            int sAdjusted = originalS[i] + sAdjust; 
-            if(sAdjusted>255){
-                sAdjusted=255;
+            int sAdjusted =  (originalS[i] & 0xFF) + sAdjust;
+            if (sAdjusted > 255) {
+                sAdjusted = 255;
+            } else if (sAdjusted < 0) {
+                sAdjusted = 0;
             }
             s[i] = (byte) sAdjusted;
-            int bAdjusted = originalB[i] + bAdjust;
-            if(bAdjusted>255){
+            int bAdjusted = (originalB[i]  & 0xFF)+ bAdjust;
+            if (bAdjusted > 255) {
                 bAdjusted = 255;
+            } else if (bAdjusted < 0) {
+                bAdjusted = 0;
             }
+
             b[i] = (byte) (bAdjusted);
+            if (originalB[i] != b[i] && bAdjust == 0) {
+                System.out.println(originalB[i] + "-->" + b[i]);
+            }
         }
         cp.setHSB(h, s, b);
         //processor.setIntArray(imgArray);
@@ -113,7 +128,6 @@ public class HSBChangePlugin implements Command, Previewable {
     public static void main(final String... args) throws Exception {
         // Launch ImageJ as usual.
         final ImageJ ij = net.imagej.Main.launch(args);
-
         // Launch the "Gradient Image" command right away.
         //	ij.command().run(GradientImage.class, true);
     }
