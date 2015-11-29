@@ -7,13 +7,14 @@ package il.ac.weizmann.brain.imagej;
  * See the CC0 1.0 Universal license for details:
  *     http://creativecommons.org/publicdomain/zero/1.0/
  */
-
 import ij.ImagePlus;
 import ij.WindowManager;
+import ij.plugin.filter.PlugInFilter;
 import ij.process.ColorProcessor;
 import ij.process.ImageProcessor;
 import net.imagej.ImageJ;
 import org.scijava.command.Command;
+import org.scijava.command.Previewable;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 
@@ -25,24 +26,68 @@ import org.scijava.plugin.Plugin;
  */
 @Plugin(type = Command.class, headless = true,
         menuPath = "Process>HSB Adjust")
-public class HSBChangePlugin implements Command {
+public class HSBChangePlugin implements Command, Previewable {
 
 //    @Parameter
 //    private DatasetService datasetService;
+    @Parameter
+    private ImagePlus image;
 
     @Parameter(min = "0", max = "180", description = "Hue adjust", label = "Hue+")
-    private int hAdjust = 0;
+    private byte hAdjust = 0;
     @Parameter(min = "0", max = "180", description = "Saturation adjust", label = "Saturation+")
-    private int sAdjust = 0;
+    private byte sAdjust = 0;
     @Parameter(min = "0", max = "180", description = "Brithness adjust", label = "Brithness+")
-    private int bAdjust = 0;
-//	@Parameter(type = ItemIO.OUTPUT)
-//	private Dataset dataset;
+    private byte bAdjust = 0;
+
+    private byte[] originalH;
+    private byte[] originalS;
+    private byte[] originalB;
+
     @Override
     public void run() {
+
+        ColorProcessor cp = getColorModel();
+        int width = image.getWidth();
+        int height = image.getHeight();
+        int imgSize = width * height;
+        boolean shouldLoad = false;
+        if (originalH == null) {
+            originalH = new byte[imgSize];
+            shouldLoad = true;
+        }
+        if (originalS == null) {
+            originalS = new byte[imgSize];
+            shouldLoad = true;
+        }
+        if (originalB == null) {
+            originalB = new byte[imgSize];
+            shouldLoad = true;
+        }
+        if (shouldLoad) {
+            cp.getHSB(originalH, originalS, originalB);
+        }
+        byte[] h = new byte[imgSize];
+        byte[] s = new byte[imgSize];
+        byte[] b = new byte[imgSize];
+
+        for (int i = 0; i < imgSize; i++) {
+            h[i] = (byte) (originalH[i] + hAdjust);
+            s[i] = (byte) (originalS[i] + sAdjust);
+            b[i] = (byte) (originalB[i] + bAdjust);
+        }
+        cp.setHSB(h, s, b);
+        //processor.setIntArray(imgArray);
+        image.updateAndRepaintWindow();
+
+        // NB: Because the dataset is declared as an "OUTPUT" above,
+        // ImageJ automatically takes care of displaying it afterwards!
+    }
+
+    private ColorProcessor getColorModel() {
         //we're replacing all colors in the picture
-        ImagePlus image = WindowManager.getCurrentImage();
         // int[] dimensions = image.getDimensions();
+
         ImageProcessor processor = image.getProcessor();
         //int[][] imgArray = processor.getIntArray();
         ColorProcessor cp;
@@ -51,24 +96,7 @@ public class HSBChangePlugin implements Command {
         } else {
             cp = (ColorProcessor) processor.convertToRGB();
         }
-        int width1 = image.getWidth();
-        int height1 = image.getHeight();
-        int imgSize = width1 * height1;
-        byte[] h = new byte[imgSize];
-        byte[] s = new byte[imgSize];
-        byte[] b = new byte[imgSize];
-        cp.getHSB(h, s, b);
-        for (int i = 0; i < imgSize; i++) {
-            h[i] += hAdjust;
-            s[i] += sAdjust;
-            b[i] += bAdjust;
-        }
-        cp.setHSB(h, s, b);
-        //processor.setIntArray(imgArray);
-        image.updateAndRepaintWindow();
-
-        // NB: Because the dataset is declared as an "OUTPUT" above,
-        // ImageJ automatically takes care of displaying it afterwards!
+        return cp;
     }
 
     /**
@@ -80,6 +108,20 @@ public class HSBChangePlugin implements Command {
 
         // Launch the "Gradient Image" command right away.
         //	ij.command().run(GradientImage.class, true);
+    }
+
+    @Override
+    public void preview() {
+        run();
+    }
+
+    @Override
+    public void cancel() {
+
+        ColorProcessor cp = getColorModel();
+        cp.setHSB(originalH, originalS, originalB);
+        image.updateAndRepaintWindow();
+
     }
 
 }
