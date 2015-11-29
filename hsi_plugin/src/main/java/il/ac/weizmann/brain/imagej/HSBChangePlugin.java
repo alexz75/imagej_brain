@@ -33,12 +33,12 @@ public class HSBChangePlugin implements Command, Previewable {
     @Parameter
     private ImagePlus image;
 
-    @Parameter(min = "0", max = "180", description = "Hue adjust", label = "Hue+", persist = false)
-    private byte hAdjust = 0;
-    @Parameter(min = "0", max = "180", description = "Saturation adjust", label = "Saturation+", persist = false)
-    private byte sAdjust = 0;
-    @Parameter(min = "0", max = "180", description = "Brithness adjust", label = "Brithness+", persist = false)
-    private byte bAdjust = 0;
+    @Parameter(min = "0", max = "255", description = "Hue adjust", label = "Hue+", persist = false)
+    private int hAdjust = 0;
+    @Parameter(min = "0", max = "255", description = "Saturation adjust", label = "Saturation+", persist = false)
+    private int sAdjust = 0;
+    @Parameter(min = "0", max = "255", description = "Brithness adjust", label = "Brithness+", persist = false)
+    private int bAdjust = 0;
 
     private byte[] originalH;
     private byte[] originalS;
@@ -66,9 +66,23 @@ public class HSBChangePlugin implements Command, Previewable {
         byte[] b = new byte[imgSize];
 
         for (int i = 0; i < imgSize; i++) {
-            h[i] = (byte) (originalH[i] + hAdjust);
-            s[i] = (byte) (originalS[i] + sAdjust);
-            b[i] = (byte) (originalB[i] + bAdjust);
+            int hAjusted=originalH[i] + hAdjust;
+            if(hAjusted > 255){
+                // in case angle > 360 degree forward it more
+                hAjusted = hAjusted % 255; 
+            }
+            
+            h[i] = (byte) hAjusted;
+            int sAdjusted = originalS[i] + sAdjust; 
+            if(sAdjusted>255){
+                sAdjusted=255;
+            }
+            s[i] = (byte) sAdjusted;
+            int bAdjusted = originalB[i] + bAdjust;
+            if(bAdjusted>255){
+                bAdjusted = 255;
+            }
+            b[i] = (byte) (bAdjusted);
         }
         cp.setHSB(h, s, b);
         //processor.setIntArray(imgArray);
