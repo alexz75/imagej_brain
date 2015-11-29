@@ -6,6 +6,11 @@
  *     http://creativecommons.org/publicdomain/zero/1.0/
  */
 
+import ij.ImagePlus;
+import ij.ImageStack;
+import ij.WindowManager;
+import ij.process.ImageProcessor;
+import java.awt.Color;
 import net.imagej.Dataset;
 import net.imagej.DatasetService;
 import net.imagej.ImageJ;
@@ -28,7 +33,7 @@ import org.scijava.plugin.Plugin;
 @Plugin(type = Command.class, headless = true,
 	menuPath = "File>New>Gradient Image")
 public class GradientImage implements Command {
-
+        
 	@Parameter
 	private DatasetService datasetService;
 
@@ -38,29 +43,26 @@ public class GradientImage implements Command {
 	@Parameter(min = "1")
 	private int height = 512;
 
-	@Parameter(type = ItemIO.OUTPUT)
-	private Dataset dataset;
+//	@Parameter(type = ItemIO.OUTPUT)
+//	private Dataset dataset;
 
 	@Override
 	public void run() {
-		// Generate a byte array containing the diagonal gradient.
-		final byte[] data = new byte[width * height];
-		for (int x = 0; x < width; x++) {
-			for (int y = 0; y < height; y++) {
-				final int index = y * width + x;
-				data[index] = (byte) (x + y);
-			}
-		}
-
-		// Create an empty dataset.
-		final String name = "Gradient Image";
-		final long[] dims = { width, height };
-		final AxisType[] axes = { Axes.X, Axes.Y };
-		dataset = datasetService.create(new UnsignedByteType(), dims, name, axes);
-
-		// Populate the dataset with the gradient data.
-		dataset.setPlane(0, data);
-
+            //we're replacing all colors in the picture
+            ImagePlus image=WindowManager.getCurrentImage();
+            // int[] dimensions = image.getDimensions();
+            ImageProcessor processor = image.getProcessor();
+            int[][] imgArray = processor.getIntArray();
+            
+            for(int x=0; x<imgArray.length; x++){
+                for(int y=0; y<imgArray[x].length; y++){
+                    imgArray[x][y]=Color.red.getRGB();
+                }
+            }
+        
+            processor.setIntArray(imgArray);
+            image.updateAndRepaintWindow();
+                
 		// NB: Because the dataset is declared as an "OUTPUT" above,
 		// ImageJ automatically takes care of displaying it afterwards!
 	}
@@ -71,7 +73,7 @@ public class GradientImage implements Command {
 		final ImageJ ij = net.imagej.Main.launch(args);
 
 		// Launch the "Gradient Image" command right away.
-		ij.command().run(GradientImage.class, true);
+	//	ij.command().run(GradientImage.class, true);
 	}
 
 }
