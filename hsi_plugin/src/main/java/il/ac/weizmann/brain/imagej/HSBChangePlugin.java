@@ -25,7 +25,7 @@ import org.scijava.plugin.Plugin;
  * </p>
  */
 @Plugin(type = Command.class, headless = true,
-        menuPath = "Process>HSB Adjust")
+        menuPath = "Process>HSB Adjust",  initializer = "initPlugin")
 public class HSBChangePlugin implements Command, Previewable {
 
 //    @Parameter
@@ -33,40 +33,34 @@ public class HSBChangePlugin implements Command, Previewable {
     @Parameter
     private ImagePlus image;
 
-    @Parameter(min = "0", max = "180", description = "Hue adjust", label = "Hue+")
+    @Parameter(min = "0", max = "180", description = "Hue adjust", label = "Hue+", persist = false)
     private byte hAdjust = 0;
-    @Parameter(min = "0", max = "180", description = "Saturation adjust", label = "Saturation+")
+    @Parameter(min = "0", max = "180", description = "Saturation adjust", label = "Saturation+", persist = false)
     private byte sAdjust = 0;
-    @Parameter(min = "0", max = "180", description = "Brithness adjust", label = "Brithness+")
+    @Parameter(min = "0", max = "180", description = "Brithness adjust", label = "Brithness+", persist = false)
     private byte bAdjust = 0;
 
     private byte[] originalH;
     private byte[] originalS;
     private byte[] originalB;
 
+    private ColorProcessor cp;
+    private int imgSize;
+    
+    protected void initPlugin(){
+        cp = getColorModel();
+        int width = image.getWidth();
+        int height = image.getHeight();
+        imgSize = width * height;
+        originalH = new byte[imgSize];
+        originalS = new byte[imgSize];
+        originalB = new byte[imgSize];
+        cp.getHSB(originalH, originalS, originalB);
+    }
+
     @Override
     public void run() {
 
-        ColorProcessor cp = getColorModel();
-        int width = image.getWidth();
-        int height = image.getHeight();
-        int imgSize = width * height;
-        boolean shouldLoad = false;
-        if (originalH == null) {
-            originalH = new byte[imgSize];
-            shouldLoad = true;
-        }
-        if (originalS == null) {
-            originalS = new byte[imgSize];
-            shouldLoad = true;
-        }
-        if (originalB == null) {
-            originalB = new byte[imgSize];
-            shouldLoad = true;
-        }
-        if (shouldLoad) {
-            cp.getHSB(originalH, originalS, originalB);
-        }
         byte[] h = new byte[imgSize];
         byte[] s = new byte[imgSize];
         byte[] b = new byte[imgSize];
