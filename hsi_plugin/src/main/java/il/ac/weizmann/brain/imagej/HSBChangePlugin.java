@@ -8,8 +8,6 @@ package il.ac.weizmann.brain.imagej;
  *     http://creativecommons.org/publicdomain/zero/1.0/
  */
 import ij.ImagePlus;
-import ij.WindowManager;
-import ij.plugin.filter.PlugInFilter;
 import ij.process.ColorProcessor;
 import ij.process.ImageProcessor;
 import net.imagej.ImageJ;
@@ -34,32 +32,32 @@ public class HSBChangePlugin implements Command, Previewable {
     @Parameter
     private ImagePlus image;
 
-    @Parameter(min = "0", max = "255", description = "Hue adjust", label = "Hue, degrees",
+    @Parameter(min = "0", max = "360", description = "Hue adjust", label = "Hue, degrees",
             persist = false, style = NumberWidget.SLIDER_STYLE, stepSize = "10")
     private int hAdjust = 0;
-    @Parameter(min = "-255", max = "255", description = "Saturation adjust", label = "Saturation", persist = false,
-            style = NumberWidget.SLIDER_STYLE)
+    @Parameter(min = "-100", max = "100", description = "Saturation adjust", label = "Saturation,%", persist = false,
+            style = NumberWidget.SLIDER_STYLE, stepSize = "5")
     private int sAdjust = 0;
-    @Parameter(min = "-255", max = "255", description = "Brithness adjust", label = "Brithness", persist = false,
-            style = NumberWidget.SLIDER_STYLE)
+    @Parameter(min = "-100", max = "100", description = "Brithness adjust", label = "Brithness,%", persist = false,
+            style = NumberWidget.SLIDER_STYLE, stepSize = "5")
     private int bAdjust = 0;
 
     private byte[] originalH;
     private byte[] originalS;
     private byte[] originalB;
 
-    private ColorProcessor cp;
+    private ColorProcessor colorProcessor;
     private int imgSize;
 
     protected void initPlugin() {
-        cp = getColorModel();
+        colorProcessor = getColorProcessor();
         int width = image.getWidth();
         int height = image.getHeight();
         imgSize = width * height;
         originalH = new byte[imgSize];
         originalS = new byte[imgSize];
         originalB = new byte[imgSize];
-        cp.getHSB(originalH, originalS, originalB);
+        colorProcessor.getHSB(originalH, originalS, originalB);
         bAdjust = 0;
         hAdjust = 0;
         sAdjust = 0;
@@ -71,23 +69,29 @@ public class HSBChangePlugin implements Command, Previewable {
         byte[] h = new byte[imgSize];
         byte[] s = new byte[imgSize];
         byte[] b = new byte[imgSize];
-
+        //convert hue from degrees to byte
+        float hratio=255f/360f;
+        int hAdjustFixed=(int) (hratio * hAdjust);
+        float percentRatio=255f/100f;
+        int sAdjustFixed =(int) (percentRatio * sAdjust);
+        int bAdjustFixed= (int) (percentRatio * bAdjust);
         for (int i = 0; i < imgSize; i++) {
-            int hAjusted = (originalH[i] & 0xFF) + (int) hAdjust;
+            
+            int hAjusted = (originalH[i] & 0xFF) + hAdjustFixed;
             if (hAjusted > 255) {
                 // in case angle > 360 degree forward it more
                 hAjusted = hAjusted % 255;
             }
 
             h[i] = (byte) hAjusted;
-            int sAdjusted =  (originalS[i] & 0xFF) + sAdjust;
+            int sAdjusted = (originalS[i] & 0xFF) + sAdjustFixed;
             if (sAdjusted > 255) {
                 sAdjusted = 255;
             } else if (sAdjusted < 0) {
                 sAdjusted = 0;
             }
             s[i] = (byte) sAdjusted;
-            int bAdjusted = (originalB[i]  & 0xFF)+ bAdjust;
+            int bAdjusted = (originalB[i] & 0xFF) + bAdjustFixed;
             if (bAdjusted > 255) {
                 bAdjusted = 255;
             } else if (bAdjusted < 0) {
@@ -99,7 +103,7 @@ public class HSBChangePlugin implements Command, Previewable {
                 System.out.println(originalB[i] + "-->" + b[i]);
             }
         }
-        cp.setHSB(h, s, b);
+        colorProcessor.setHSB(h, s, b);
         //processor.setIntArray(imgArray);
         image.updateAndRepaintWindow();
 
@@ -107,7 +111,7 @@ public class HSBChangePlugin implements Command, Previewable {
         // ImageJ automatically takes care of displaying it afterwards!
     }
 
-    private ColorProcessor getColorModel() {
+    private ColorProcessor getColorProcessor() {
         //we're replacing all colors in the picture
         // int[] dimensions = image.getDimensions();
 
@@ -127,9 +131,10 @@ public class HSBChangePlugin implements Command, Previewable {
      */
     public static void main(final String... args) throws Exception {
         // Launch ImageJ as usual.
-        final ImageJ ij = net.imagej.Main.launch(args);
+            final ImageJ ij = net.imagej.Main.launch(args);
         // Launch the "Gradient Image" command right away.
         //	ij.command().run(GradientImage.class, true);
+
     }
 
     @Override
@@ -140,7 +145,7 @@ public class HSBChangePlugin implements Command, Previewable {
     @Override
     public void cancel() {
 
-        ColorProcessor cp = getColorModel();
+        ColorProcessor cp = getColorProcessor();
         cp.setHSB(originalH, originalS, originalB);
         image.updateAndRepaintWindow();
 
